@@ -99,7 +99,7 @@ dW,db,dA_prev=linear_backward(dZ,linear_cache)
 
 def linear_act_backward(dA,cache,act_name):
     linear_cache,act_cache=cache
-    dZ,dA_prev,dW,db=None
+    dZ=dA_prev=dW=db=None
     if act_name=='relu':
         dZ=relu_backward(dA,act_cache)
         dW,db,dA_prev=linear_backward(dZ,linear_cache)
@@ -108,13 +108,56 @@ def linear_act_backward(dA,cache,act_name):
         dW,db,dA_prev=linear_backward(dZ,linear_cache)
     return dA_prev,dW,db
 
+#test linear_act_backward
+dAL,linear_act_cache=linear_activation_backward_test_case()
+
+
+    
+
 
        
 def L_model_backward(AL,Y,caches):
-     grads={}
-     L=len(caches)/2
-     m=AL.shape[1]
-     Y=Y.reshape(AL.shape[1])
+    grads = {}
+    L = len(caches) # the number of layers
+    m = AL.shape[1]
+    Y = Y.reshape(AL.shape) # after this line, Y is the same shape as AL
+    
+    # Initializing the backpropagation
+    dAL = - (np.divide(Y, AL) - np.divide(1 - Y, 1 - AL))
+    
+    # Lth layer (SIGMOID -> LINEAR) gradients. Inputs: "AL, Y, caches". Outputs: "grads["dAL"], grads["dWL"], grads["dbL"]
+    current_cache = caches[L-1]
+    grads["dA" + str(L-1)], grads["dW" + str(L)], grads["db" + str(L)] = linear_act_backward(dAL, current_cache, "sigmoid")
+    
+    for l in reversed(range(L-1)):
+        # lth layer: (RELU -> LINEAR) gradients.
+        current_cache = caches[l]
+        dA_prev_temp, dW_temp, db_temp = linear_act_backward(grads["dA" + str(l + 1)], current_cache, "relu")
+        grads["dA" + str(l)] = dA_prev_temp
+        grads["dW" + str(l + 1)] = dW_temp
+        grads["db" + str(l + 1)] = db_temp
+
+    return grads     
+
+
+#test L_model_backward
+AL,Y_assess,caches=L_model_backward_test_case()
+grads=L_model_backward(AL,Y_assess,caches)
+print_grads(grads)
+
+def update_parameters(parameters,grads,learning_rate):
+    L=len(parameters)//2
+    for l in range(L):
+        parameters['W'+str(l+1)]=parameters['W'+str(l+1)]-learning_rate*grads['dW'+str(l+1)]
+        parameters['b'+str(l+1)]=parameters['b'+str(l+1)]-learning_rate*grads['db'+str(l+1)]
+    return parameters 
+#test update_parameters
+parameters,grads=update_parameters_test_case()  
+new_parameters=update_parameters(parameters,grads,0.1)  
+         
+         
+         
+         
      
         
         
